@@ -1,100 +1,163 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
-public class GameManagerScript : MonoBehaviour
+public class GameManager : MonoBehaviour
 {
+    public GameObject playerPrefab;
+    public GameObject boxPrefab;
+    public GameObject clearText;
 
-    //配列の宣言
-    int[] map;
+    private int[,] map;
+    private GameObject[,] field;
 
-    //メソッド化
-    private void printArray()
+    // ゲームの初期化
+    void Start()
     {
+        InitializeGame();
+    }
+
+    // ゲームの初期化処理
+    void InitializeGame()
+    {
+        Screen.SetResolution(1280, 720, false);
+
         string debugText = "";
 
-        for (int i = 0; i < map.Length; i++)
+        map = new int[,]
         {
-            debugText += map[i].ToString() + ",";
+            { 0, 0, 0, 0, 0, 0, 0, 0},
+            { 0, 0, 2, 0, 0, 0, 0, 0},
+            { 0, 0, 0, 0, 0, 0, 0, 0},
+            { 1, 0, 0, 0, 0, 0, 0, 0},
+            { 0, 0, 0, 0, 0, 0, 0, 0},
+            { 0, 0, 0, 0, 0, 0, 0, 0},
+            { 0, 0, 0, 0, 0, 0, 0, 0},
+            { 0, 0, 0, 0, 0, 0, 0, 3},
+        };
+
+        field = new GameObject[map.GetLength(0), map.GetLength(1)];
+
+        for (int y = 0; y < map.GetLength(0); y++)
+        {
+            for (int x = 0; x < map.GetLength(1); x++)
+            {
+                debugText += map[y, x].ToString() + ",";
+                if (map[y, x] == 1)
+                {
+                    field[y, x] = Instantiate(playerPrefab, new Vector3(x, map.GetLength(0) - 1 - y, 0.0f), Quaternion.identity);
+                }
+                if (map[y, x] == 2)
+                {
+                    field[y, x] = Instantiate(boxPrefab, new Vector3(x, map.GetLength(0) - 1 - y, 0.0f), Quaternion.identity);
+                }
+            }
+            debugText += "\n";
         }
         Debug.Log(debugText);
     }
 
-    //クラスの中、メソッドの外に書くことに注意
-    //返り値の型に注意
-    int GetPlayerIndex()
-    {
-        for (int i = 0; i < map.Length; i++)
-        {
-            if (map[i] == 1)
-            {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    bool MoveNumber(int number, int moveFrom, int moveTo)
-    {
-        //移動先が範囲外なら移動不可
-        if (moveTo < 0 || moveTo >= map.Length) 
-        { 
-            return false;
-        }
-
-        //移動先に２（箱）があったら
-        if (map[moveTo]==2)
-        {
-            //どの方向へ移動するかを算出
-            int velocity = moveTo - moveFrom;
-            //プレイヤーの移動先から、さらに先へ２（箱）を移動させる
-            //箱の移動処理、MoveNumberメソッド内でMoveNumberメソッド呼び、処理が再帰している。
-            //移動可不可をboolで記録
-            bool success = MoveNumber(2, moveTo, moveTo + velocity);
-
-            //もし箱が移動しっぱしたらプレイヤーの移動も失敗
-            if (!success) 
-            { 
-                return false;
-            }
-        }
-
-        map[moveTo] = number;
-        map[moveFrom] = 0;
-        return true;
-    }
-
-
-
-    // Start is called before the first frame update
-    void Start()
-    {
-        //配列の実態の作成と初期化
-        map = new int[] { 2, 0, 0, 1, 0, 2, 2, 0, 0 };
-
-        printArray();
-    }
-
-    // Update is called once per frame
+    // フレームごとの更新
     void Update()
+    {
+        HandleInput();
+
+        // もしクリアしていたら
+        if (IsCleared())
+        {
+            clearText.SetActive(true);
+        }
+    }
+
+    // 固定フレームごとの更新（物理演算など）
+    void FixedUpdate()
+    {
+        // 物理計算のロジックをここに追加
+    }
+
+    // 入力処理
+    void HandleInput()
     {
         if (Input.GetKeyDown(KeyCode.RightArrow))
         {
-            //メソッド化した処理を使用
-            int playerIndex = GetPlayerIndex();
-
-            MoveNumber(1, playerIndex, playerIndex + 1);
-            printArray();
-
+            Vector2Int playerIndex = GetPlayerIndex();
+            MoveNumber(playerIndex, playerIndex + new Vector2Int(1, 0));
         }
-
         if (Input.GetKeyDown(KeyCode.LeftArrow))
         {
-            int playerIndex = GetPlayerIndex();
-
-            MoveNumber(1, playerIndex, playerIndex - 1);
-            printArray();
+            Vector2Int playerIndex = GetPlayerIndex();
+            MoveNumber(playerIndex, playerIndex + new Vector2Int(-1, 0));
+        }
+        if (Input.GetKeyDown(KeyCode.UpArrow))
+        {
+            Vector2Int playerIndex = GetPlayerIndex();
+            MoveNumber(playerIndex, playerIndex + new Vector2Int(0, -1));
+        }
+        if (Input.GetKeyDown(KeyCode.DownArrow))
+        {
+            Vector2Int playerIndex = GetPlayerIndex();
+            MoveNumber(playerIndex, playerIndex + new Vector2Int(0, 1));
+        }
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            ResetGame();
         }
     }
-}
 
+    // ゲームリセット
+    void ResetGame()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    // プレイヤーの位置を取得
+    private Vector2Int GetPlayerIndex()
+    {
+        for (int y = 0; y < field.GetLength(0); y++)
+        {
+            for (int x = 0; x < field.GetLength(1); x++)
+            {
+                if (field[y, x] != null && field[y, x].tag == "Player")
+                {
+                    return new Vector2Int(x, y);
+                }
+            }
+        }
+        return new Vector2Int(-1, -1);
+    }
+
+    // 移動処理
+    bool MoveNumber(Vector2Int moveFrom, Vector2Int moveTo)
+    {
+        if (moveTo.y < 0 || moveTo.y >= field.GetLength(0)) { return false; }
+        if (moveTo.x < 0 || moveTo.x >= field.GetLength(1)) { return false; }
+
+        if (field[moveTo.y, moveTo.x] != null && field[moveTo.y, moveTo.x].tag == "Box")
+        {
+            Vector2Int velocity = moveTo - moveFrom;
+            bool success = MoveNumber(moveTo, moveTo + velocity);
+            if (!success) { return false; }
+        }
+
+        field[moveTo.y, moveTo.x] = field[moveFrom.y, moveFrom.x];
+        Vector3 moveToPosition = new Vector3(moveTo.x, map.GetLength(0) - 1 - moveTo.y, 0);
+        field[moveFrom.y, moveFrom.x] = null;
+        field[moveTo.y, moveTo.x].GetComponent<Move>().Moveto(moveToPosition);
+        return true;
+    }
+
+    // クリア判定
+    bool IsCleared()
+    {
+        for (int y = 0; y < map.GetLength(0); y++)
+        {
+            for (int x = 0; x < map.GetLength(1); x++)
+            {
+                if (map[y, x] == 3 && (field[y, x] == null || field[y, x].tag != "Box"))
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+}
