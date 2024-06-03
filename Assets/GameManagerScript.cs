@@ -5,6 +5,9 @@ public class GameManager : MonoBehaviour
 {
     public GameObject playerPrefab;
     public GameObject boxPrefab;
+    public GameObject goalPrefab;
+    public GameObject particlePrefab;
+    
     public GameObject clearText;
 
     private int[,] map;
@@ -50,6 +53,10 @@ public class GameManager : MonoBehaviour
                 {
                     field[y, x] = Instantiate(boxPrefab, new Vector3(x, map.GetLength(0) - 1 - y, 0.0f), Quaternion.identity);
                 }
+                if (map[y, x] == 3)
+                {
+                    field[y, x] = Instantiate(goalPrefab, new Vector3(x, map.GetLength(0) - 1 - y, 0.0f), Quaternion.identity);
+                }
             }
             debugText += "\n";
         }
@@ -68,39 +75,45 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // 固定フレームごとの更新（物理演算など）
-    void FixedUpdate()
-    {
-        // 物理計算のロジックをここに追加
-    }
-
     // 入力処理
     void HandleInput()
     {
+        // 右移動
         if (Input.GetKeyDown(KeyCode.RightArrow))
         {
             Vector2Int playerIndex = GetPlayerIndex();
             MoveNumber(playerIndex, playerIndex + new Vector2Int(1, 0));
         }
+
+        // 左移動
         if (Input.GetKeyDown(KeyCode.LeftArrow))
         {
             Vector2Int playerIndex = GetPlayerIndex();
             MoveNumber(playerIndex, playerIndex + new Vector2Int(-1, 0));
         }
+
+        // 上移動
         if (Input.GetKeyDown(KeyCode.UpArrow))
         {
             Vector2Int playerIndex = GetPlayerIndex();
             MoveNumber(playerIndex, playerIndex + new Vector2Int(0, -1));
         }
+
+        // 下移動
         if (Input.GetKeyDown(KeyCode.DownArrow))
         {
             Vector2Int playerIndex = GetPlayerIndex();
             MoveNumber(playerIndex, playerIndex + new Vector2Int(0, 1));
         }
+
+        // Rを押したらリセット
         if (Input.GetKeyDown(KeyCode.R))
         {
             ResetGame();
         }
+
+        // もしクリアしていたら
+        if(IsCleared()) { Debug.Log("Clear!"); }
     }
 
     // ゲームリセット
